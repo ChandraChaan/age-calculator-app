@@ -1,6 +1,8 @@
 import 'package:agely/core/theme/app_theme.dart';
+import 'package:agely/features/age_calculator/presentation/age_calculator_controller.dart';
 import 'package:agely/features/age_calculator/presentation/home_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(const AgelyApp());
@@ -11,11 +13,14 @@ class AgelyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Agely',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      home: const HomePage(),
+    return ChangeNotifierProvider(
+      create: (_) => AgeCalculatorController(),
+      child: MaterialApp(
+        title: 'Agely',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: const HomePage(),
+      ),
     );
   }
 }
