@@ -14,7 +14,7 @@ class AgelyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AgeCalculatorController(),
+      create: (_) => AgeCalculatorController()..initialize(),
       child: MaterialApp(
         title: 'Agely',
         debugShowCheckedModeBanner: false,

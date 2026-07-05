@@ -2,9 +2,12 @@ import 'package:agely/core/constants/app_spacing.dart';
 import 'package:agely/features/age_calculator/presentation/age_calculator_controller.dart';
 import 'package:agely/features/age_calculator/presentation/widgets/date_input_field.dart';
 import 'package:agely/features/age_calculator/presentation/widgets/primary_button.dart';
+import 'package:agely/features/age_calculator/presentation/widgets/reminder_dialog.dart';
+import 'package:agely/features/age_calculator/presentation/widgets/reminder_list_tile.dart';
 import 'package:agely/features/age_calculator/presentation/widgets/result_card.dart';
 import 'package:agely/features/age_calculator/presentation/widgets/statistic_tile.dart';
 import 'package:agely/features/age_calculator/services/age_calculation_result.dart';
+import 'package:agely/features/age_calculator/services/reminder.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -95,7 +98,30 @@ class HomePage extends StatelessWidget {
                       const SizedBox(height: AppSpacing.md),
                       _NextBirthdayCard(result: controller.result!),
                     ],
+                    if (controller.canSaveReminder &&
+                        controller.suggestedReminderDate != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _ReminderSuggestionCard(
+                        targetDate: controller.suggestedReminderDate!,
+                        isBusy: controller.isSavingReminder,
+                        onPressed: () =>
+                            _openCreateReminderDialog(context, controller),
+                      ),
+                    ],
                   ],
+                  const SizedBox(height: AppSpacing.xl),
+                  _UpcomingRemindersSection(
+                    controller: controller,
+                    onCreateReminder:
+                        controller.canSaveReminder &&
+                            controller.suggestedReminderDate != null
+                        ? () => _openCreateReminderDialog(context, controller)
+                        : null,
+                    onEditReminder: (reminder) =>
+                        _openEditReminderDialog(context, controller, reminder),
+                    onDeleteReminder: (reminder) =>
+                        _deleteReminder(context, controller, reminder),
+                  ),
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     'Version 1.0',
@@ -154,6 +180,150 @@ class HomePage extends StatelessWidget {
     }
 
     controller.updateEndDate(selectedDate);
+  }
+
+  Future<void> _openCreateReminderDialog(
+    BuildContext context,
+    AgeCalculatorController controller,
+  ) async {
+    final targetDate = controller.suggestedReminderDate;
+    if (targetDate == null) {
+      return;
+    }
+
+    final draft = await showDialog<ReminderDraft>(
+      context: context,
+      builder: (context) => ReminderDialog(targetDate: targetDate),
+    );
+
+    if (!context.mounted || draft == null) {
+      return;
+    }
+
+    try {
+      await controller.createReminder(
+        title: draft.title,
+        category: draft.category,
+        repeat: draft.repeat,
+        style: draft.style,
+        targetDate: targetDate,
+      );
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Reminder saved.');
+    } on ArgumentError catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, error.message.toString());
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Could not save this reminder.');
+    }
+  }
+
+  Future<void> _openEditReminderDialog(
+    BuildContext context,
+    AgeCalculatorController controller,
+    Reminder reminder,
+  ) async {
+    final draft = await showDialog<ReminderDraft>(
+      context: context,
+      builder: (context) => ReminderDialog(
+        targetDate: reminder.targetDate,
+        initialReminder: reminder,
+      ),
+    );
+
+    if (!context.mounted || draft == null) {
+      return;
+    }
+
+    try {
+      await controller.updateReminder(
+        reminder: reminder,
+        title: draft.title,
+        category: draft.category,
+        repeat: draft.repeat,
+        style: draft.style,
+      );
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Reminder updated.');
+    } on ArgumentError catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, error.message.toString());
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Could not update this reminder.');
+    }
+  }
+
+  Future<void> _deleteReminder(
+    BuildContext context,
+    AgeCalculatorController controller,
+    Reminder reminder,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Reminder'),
+        content: Text('Remove "${reminder.title}" from upcoming reminders?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted || shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await controller.deleteReminder(reminder);
+
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Reminder deleted.');
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Could not delete this reminder.');
+    }
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -361,6 +531,104 @@ class _NextBirthdayCard extends StatelessWidget {
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+class _ReminderSuggestionCard extends StatelessWidget {
+  const _ReminderSuggestionCard({
+    required this.targetDate,
+    required this.isBusy,
+    required this.onPressed,
+  });
+
+  final DateTime targetDate;
+  final bool isBusy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ResultCard(
+      title: 'Want to save this date?',
+      subtitle: DateFormat('d MMMM y').format(targetDate),
+      children: [
+        PrimaryButton(
+          label: isBusy ? 'Saving...' : 'Save Reminder',
+          onPressed: isBusy ? null : onPressed,
+        ),
+      ],
+    );
+  }
+}
+
+class _UpcomingRemindersSection extends StatelessWidget {
+  const _UpcomingRemindersSection({
+    required this.controller,
+    required this.onCreateReminder,
+    required this.onEditReminder,
+    required this.onDeleteReminder,
+  });
+
+  final AgeCalculatorController controller;
+  final VoidCallback? onCreateReminder;
+  final ValueChanged<Reminder> onEditReminder;
+  final ValueChanged<Reminder> onDeleteReminder;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateUtils.dateOnly(DateTime.now());
+
+    return ResultCard(
+      title: 'Upcoming Reminders',
+      subtitle: controller.upcomingReminders.isEmpty
+          ? 'Save an important date to see it here.'
+          : null,
+      children: [
+        if (controller.isLoadingReminders)
+          const Center(child: CircularProgressIndicator())
+        else ...[
+          if (controller.reminderErrorMessage != null) ...[
+            _ValidationMessage(message: controller.reminderErrorMessage!),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (controller.upcomingReminders.isEmpty)
+            const Text('No reminders saved yet.')
+          else
+            Column(
+              children: [
+                for (
+                  var index = 0;
+                  index < controller.upcomingReminders.length;
+                  index += 1
+                ) ...[
+                  ReminderListTile(
+                    reminder: controller.upcomingReminders[index],
+                    referenceDate: today,
+                    onEdit: () =>
+                        onEditReminder(controller.upcomingReminders[index]),
+                    onDelete: () =>
+                        onDeleteReminder(controller.upcomingReminders[index]),
+                  ),
+                  if (index != controller.upcomingReminders.length - 1)
+                    const SizedBox(height: AppSpacing.md),
+                ],
+              ],
+            ),
+          if (onCreateReminder != null) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: controller.isSavingReminder
+                    ? null
+                    : onCreateReminder,
+                icon: const Icon(Icons.add_alert_outlined),
+                label: const Text('Save Another Reminder'),
+              ),
+            ),
+          ],
+        ],
       ],
     );
   }
