@@ -1,104 +1,113 @@
-import 'package:agely/features/age_calculator/presentation/widgets/result_section_card.dart';
+import 'package:agely/core/constants/app_spacing.dart';
+import 'package:agely/features/age_calculator/presentation/widgets/dob_picker.dart';
+import 'package:agely/features/age_calculator/presentation/widgets/primary_button.dart';
+import 'package:agely/features/age_calculator/presentation/widgets/result_card.dart';
+import 'package:agely/features/age_calculator/presentation/widgets/statistic_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
-  static final DateFormat _birthdayFormat = DateFormat('d MMMM y');
-
   @override
   Widget build(BuildContext context) {
-    const dateOfBirth = '15 Nov 1997';
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 84,
+        titleSpacing: AppSpacing.md,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              'Agely',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
+            Text('Agely', style: textTheme.headlineSmall),
             const SizedBox(height: 2),
             Text(
               'Age Calculator',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
           ],
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Date of Birth',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                AppSpacing.xl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ResultCard(
+                    title: 'Date of Birth',
+                    children: [
+                      DobPicker(
+                        placeholder: 'Select your date of birth',
+                        onTap: () {},
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      PrimaryButton(label: 'Calculate Age', onPressed: () {}),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                _DatePickerField(value: dateOfBirth, onTap: () {}),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () {},
-                  child: const Text('Calculate Age'),
-                ),
-                const SizedBox(height: 24),
-                const ResultSectionCard(
-                  icon: Icons.cake_outlined,
-                  title: 'Your Age',
-                  children: [
-                    ResultValue(label: 'Years', value: '28 Years'),
-                    ResultValue(label: 'Months', value: '7 Months'),
-                    ResultValue(label: 'Days', value: '20 Days'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const ResultSectionCard(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Total',
-                  children: [
-                    ResultValue(label: 'Days', value: '10,462 Days'),
-                    ResultValue(label: 'Months', value: '343 Months'),
-                    ResultValue(label: 'Weeks', value: '1,494 Weeks'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ResultSectionCard(
-                  icon: Icons.celebration_outlined,
-                  title: 'Next Birthday',
-                  children: [
-                    const ResultValue(
-                      label: 'Remaining',
-                      value: '132 Days Remaining',
-                    ),
-                    ResultValue(
-                      label: 'Date',
-                      value: _birthdayFormat.format(DateTime(2026, 11, 15)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: Text(
+                  const SizedBox(height: AppSpacing.xl),
+                  const ResultCard(
+                    title: 'Your Age',
+                    children: [
+                      _StatisticGrid(
+                        items: [
+                          _StatisticItem(label: 'Years', value: '28'),
+                          _StatisticItem(label: 'Months', value: '7'),
+                          _StatisticItem(label: 'Days', value: '20'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const ResultCard(
+                    title: 'Totals',
+                    children: [
+                      _StatisticGrid(
+                        items: [
+                          _StatisticItem(label: 'Total Days', value: '10,462'),
+                          _StatisticItem(label: 'Total Months', value: '343'),
+                          _StatisticItem(label: 'Total Weeks', value: '1,494'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  const ResultCard(
+                    title: 'Next Birthday',
+                    children: [
+                      _StatisticGrid(
+                        items: [
+                          _StatisticItem(
+                            label: 'Next Birthday Date',
+                            value: '15 November 2026',
+                          ),
+                          _StatisticItem(label: 'Days Remaining', value: '132'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Text(
                     'Version 1.0',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -107,25 +116,39 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _DatePickerField extends StatelessWidget {
-  const _DatePickerField({required this.value, required this.onTap});
+class _StatisticGrid extends StatelessWidget {
+  const _StatisticGrid({required this.items});
 
-  final String value;
-  final VoidCallback onTap;
+  final List<_StatisticItem> items;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: onTap,
-      child: IgnorePointer(
-        child: TextFormField(
-          initialValue: value,
-          decoration: const InputDecoration(
-            suffixIcon: Icon(Icons.calendar_today_outlined),
-          ),
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 520;
+        final tileWidth = isWide
+            ? (constraints.maxWidth - AppSpacing.md) / 2
+            : constraints.maxWidth;
+
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: [
+            for (final item in items)
+              SizedBox(
+                width: tileWidth,
+                child: StatisticTile(label: item.label, value: item.value),
+              ),
+          ],
+        );
+      },
     );
   }
+}
+
+class _StatisticItem {
+  const _StatisticItem({required this.label, required this.value});
+
+  final String label;
+  final String value;
 }
