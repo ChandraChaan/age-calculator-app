@@ -5,11 +5,13 @@ class ResultCard extends StatelessWidget {
   const ResultCard({
     required this.title,
     required this.children,
+    this.icon,
     this.subtitle,
     super.key,
   });
 
   final String title;
+  final IconData? icon;
   final String? subtitle;
   final List<Widget> children;
 
@@ -24,7 +26,15 @@ class ResultCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: textTheme.titleLarge),
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: colorScheme.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+                Expanded(child: Text(title, style: textTheme.titleLarge)),
+              ],
+            ),
             if (subtitle != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(

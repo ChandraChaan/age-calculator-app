@@ -22,23 +22,28 @@ class DateInputField extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final displayValue = value ?? placeholder;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          helperText: helperText,
-          errorText: errorText,
-          suffixIcon: const Icon(Icons.calendar_today_outlined),
-        ),
-        child: Text(
-          value ?? placeholder,
-          style: textTheme.bodyLarge?.copyWith(
-            color: value == null
-                ? colorScheme.onSurfaceVariant
-                : colorScheme.onSurface,
+    return Semantics(
+      button: true,
+      label: '$label. $displayValue',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            helperText: helperText,
+            errorText: errorText,
+            suffixIcon: const Icon(Icons.calendar_today_outlined),
+          ),
+          child: Text(
+            displayValue,
+            style: textTheme.bodyLarge?.copyWith(
+              color: value == null
+                  ? colorScheme.onSurfaceVariant
+                  : colorScheme.onSurface,
+            ),
           ),
         ),
       ),

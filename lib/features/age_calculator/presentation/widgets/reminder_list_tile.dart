@@ -23,68 +23,75 @@ class ReminderListTile extends StatelessWidget {
     final nextEventDate = reminder.nextEventDate(referenceDate);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      reminder.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      reminder.category,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+    return Semantics(
+      container: true,
+      label: 'Reminder ${reminder.title}',
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        reminder.title,
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        reminder.category,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'Edit reminder',
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              IconButton(
-                tooltip: 'Delete reminder',
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              _ReminderMetaChip(
-                label: 'Next alert',
-                value: nextTriggerDate == null
-                    ? 'Expired'
-                    : DateFormat('d MMM y').format(nextTriggerDate),
-              ),
-              _ReminderMetaChip(
-                label: 'Event date',
-                value: DateFormat('d MMM y').format(nextEventDate),
-              ),
-              _ReminderMetaChip(label: 'Repeat', value: reminder.repeat.label),
-              _ReminderMetaChip(label: 'Style', value: reminder.style.label),
-            ],
-          ),
-        ],
+                IconButton(
+                  tooltip: 'Edit reminder',
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Delete reminder',
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                _ReminderMetaChip(
+                  label: 'Next alert',
+                  value: nextTriggerDate == null
+                      ? 'Expired'
+                      : DateFormat('d MMM y').format(nextTriggerDate),
+                ),
+                _ReminderMetaChip(
+                  label: 'Event date',
+                  value: DateFormat('d MMM y').format(nextEventDate),
+                ),
+                _ReminderMetaChip(
+                  label: 'Repeat',
+                  value: reminder.repeat.label,
+                ),
+                _ReminderMetaChip(label: 'Style', value: reminder.style.label),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

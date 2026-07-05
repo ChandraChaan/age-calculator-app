@@ -7,10 +7,13 @@ import 'package:agely/features/age_calculator/presentation/widgets/reminder_list
 import 'package:agely/features/age_calculator/presentation/widgets/result_card.dart';
 import 'package:agely/features/age_calculator/presentation/widgets/statistic_tile.dart';
 import 'package:agely/features/age_calculator/services/age_calculation_result.dart';
+import 'package:agely/features/age_calculator/services/notification_service.dart';
 import 'package:agely/features/age_calculator/services/reminder.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -22,12 +25,12 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AgeCalculatorController>();
-    final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 84,
+        toolbarHeight: 88,
         titleSpacing: AppSpacing.md,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,97 +46,170 @@ class HomePage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.xl,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ResultCard(
-                    title: 'Date Range',
-                    subtitle: 'End date defaults to today.',
-                    children: [
-                      _DateFieldGroup(
-                        startDate: controller.startDate,
-                        endDate: controller.endDate,
-                        showMissingStartDateError:
-                            controller.hasMissingStartDateError,
-                        onSelectStartDate: () =>
-                            _selectStartDate(context, controller),
-                        onSelectEndDate: () =>
-                            _selectEndDate(context, controller),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      if (controller.errorMessage != null &&
-                          !controller.hasMissingStartDateError) ...[
-                        _ValidationMessage(message: controller.errorMessage!),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
-                      PrimaryButton(
-                        label: 'Calculate',
-                        onPressed: controller.calculate,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  if (controller.result == null)
-                    const ResultCard(
-                      title: 'Results',
-                      children: [_EmptyStateMessage()],
-                    )
-                  else ...[
-                    _AgeSummaryCard(result: controller.result!),
-                    const SizedBox(height: AppSpacing.md),
-                    _TotalsCard(result: controller.result!),
-                    if (controller.result!.showsBirthdaySection) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      _NextBirthdayCard(result: controller.result!),
-                    ],
-                    if (controller.canSaveReminder &&
-                        controller.suggestedReminderDate != null) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      _ReminderSuggestionCard(
-                        targetDate: controller.suggestedReminderDate!,
-                        isBusy: controller.isSavingReminder,
-                        onPressed: () =>
-                            _openCreateReminderDialog(context, controller),
-                      ),
-                    ],
-                  ],
-                  const SizedBox(height: AppSpacing.xl),
-                  _UpcomingRemindersSection(
-                    controller: controller,
-                    onCreateReminder:
-                        controller.canSaveReminder &&
-                            controller.suggestedReminderDate != null
-                        ? () => _openCreateReminderDialog(context, controller)
-                        : null,
-                    onEditReminder: (reminder) =>
-                        _openEditReminderDialog(context, controller, reminder),
-                    onDeleteReminder: (reminder) =>
-                        _deleteReminder(context, controller, reminder),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  Text(
-                    'Version 1.0',
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+        actions: [
+          IconButton(
+            tooltip: controller.themeMode == ThemeMode.dark
+                ? 'Switch to light theme'
+                : 'Switch to dark theme',
+            onPressed: () => _toggleTheme(context, controller),
+            icon: Icon(
+              controller.themeMode == ThemeMode.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
             ),
           ),
+          PopupMenuButton<_AppBarAction>(
+            tooltip: 'App actions',
+            onSelected: (action) => _handleAppBarAction(context, action),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: _AppBarAction.about, child: Text('About')),
+              PopupMenuItem(
+                value: _AppBarAction.share,
+                child: Text('Share App'),
+              ),
+              PopupMenuItem(value: _AppBarAction.rate, child: Text('Rate App')),
+              PopupMenuItem(
+                value: _AppBarAction.privacy,
+                child: Text('Privacy Policy'),
+              ),
+            ],
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+      ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 980;
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1080),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                    AppSpacing.xl,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ResultCard(
+                        title: 'Date Range',
+                        subtitle:
+                            'Pick any two dates to compare. End date defaults to today.',
+                        icon: Icons.event_outlined,
+                        children: [
+                          _DateFieldGroup(
+                            startDate: controller.startDate,
+                            endDate: controller.endDate,
+                            showMissingStartDateError:
+                                controller.hasMissingStartDateError,
+                            onSelectStartDate: () =>
+                                _selectStartDate(context, controller),
+                            onSelectEndDate: () =>
+                                _selectEndDate(context, controller),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          if (controller.errorMessage != null &&
+                              !controller.hasMissingStartDateError) ...[
+                            _ValidationMessage(
+                              message: controller.errorMessage!,
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                          ],
+                          PrimaryButton(
+                            label: 'Calculate',
+                            onPressed: () => _calculate(context, controller),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      if (isWide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: _ResultsColumn(controller: controller),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              flex: 2,
+                              child: _RemindersColumn(
+                                controller: controller,
+                                onCreateReminder:
+                                    controller.canSaveReminder &&
+                                        controller.suggestedReminderDate != null
+                                    ? () => _openCreateReminderDialog(
+                                        context,
+                                        controller,
+                                      )
+                                    : null,
+                                onEnableNotifications: () =>
+                                    _enableNotifications(context, controller),
+                                onEditReminder: (reminder) =>
+                                    _openEditReminderDialog(
+                                      context,
+                                      controller,
+                                      reminder,
+                                    ),
+                                onDeleteReminder: (reminder) => _deleteReminder(
+                                  context,
+                                  controller,
+                                  reminder,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _ResultsColumn(controller: controller),
+                            const SizedBox(height: AppSpacing.xl),
+                            _RemindersColumn(
+                              controller: controller,
+                              onCreateReminder:
+                                  controller.canSaveReminder &&
+                                      controller.suggestedReminderDate != null
+                                  ? () => _openCreateReminderDialog(
+                                      context,
+                                      controller,
+                                    )
+                                  : null,
+                              onEnableNotifications: () =>
+                                  _enableNotifications(context, controller),
+                              onEditReminder: (reminder) =>
+                                  _openEditReminderDialog(
+                                    context,
+                                    controller,
+                                    reminder,
+                                  ),
+                              onDeleteReminder: (reminder) => _deleteReminder(
+                                context,
+                                controller,
+                                reminder,
+                              ),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: AppSpacing.xl),
+                      Text(
+                        'Version 1.0',
+                        textAlign: TextAlign.center,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -182,6 +258,14 @@ class HomePage extends StatelessWidget {
     controller.updateEndDate(selectedDate);
   }
 
+  Future<void> _calculate(
+    BuildContext context,
+    AgeCalculatorController controller,
+  ) async {
+    await HapticFeedback.mediumImpact();
+    controller.calculate();
+  }
+
   Future<void> _openCreateReminderDialog(
     BuildContext context,
     AgeCalculatorController controller,
@@ -199,6 +283,8 @@ class HomePage extends StatelessWidget {
     if (!context.mounted || draft == null) {
       return;
     }
+
+    await HapticFeedback.selectionClick();
 
     try {
       await controller.createReminder(
@@ -245,6 +331,8 @@ class HomePage extends StatelessWidget {
     if (!context.mounted || draft == null) {
       return;
     }
+
+    await HapticFeedback.selectionClick();
 
     try {
       await controller.updateReminder(
@@ -302,6 +390,8 @@ class HomePage extends StatelessWidget {
       return;
     }
 
+    await HapticFeedback.selectionClick();
+
     try {
       await controller.deleteReminder(reminder);
 
@@ -319,11 +409,174 @@ class HomePage extends StatelessWidget {
     }
   }
 
+  Future<void> _enableNotifications(
+    BuildContext context,
+    AgeCalculatorController controller,
+  ) async {
+    try {
+      await controller.enableNotifications();
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(context, 'Notifications enabled.');
+    } on NotificationPermissionDeniedException {
+      if (!context.mounted) {
+        return;
+      }
+
+      _showMessage(
+        context,
+        AgeCalculatorController.notificationPermissionMessage,
+      );
+    }
+  }
+
+  Future<void> _toggleTheme(
+    BuildContext context,
+    AgeCalculatorController controller,
+  ) async {
+    await HapticFeedback.selectionClick();
+    await controller.toggleThemeMode();
+  }
+
+  Future<void> _handleAppBarAction(
+    BuildContext context,
+    _AppBarAction action,
+  ) async {
+    switch (action) {
+      case _AppBarAction.about:
+        showAboutDialog(
+          context: context,
+          applicationName: 'Agely',
+          applicationVersion: '1.0.0',
+          applicationLegalese: 'A minimal age calculator built with Flutter.',
+        );
+        return;
+      case _AppBarAction.share:
+        await SharePlus.instance.share(
+          ShareParams(
+            text:
+                'Try Agely, a simple age calculator built for fast date comparisons.',
+          ),
+        );
+        return;
+      case _AppBarAction.rate:
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Rate App'),
+            content: const Text(
+              'Google Play rating will be connected when the store listing goes live.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+        return;
+      case _AppBarAction.privacy:
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Privacy Policy'),
+            content: const Text(
+              'Agely stores reminders locally on your device. A full privacy policy will be published with the Google Play listing.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+        return;
+    }
+  }
+
   void _showMessage(BuildContext context, String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+enum _AppBarAction { about, share, rate, privacy }
+
+class _ResultsColumn extends StatelessWidget {
+  const _ResultsColumn({required this.controller});
+
+  final AgeCalculatorController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.result == null) {
+      return const ResultCard(
+        title: 'Results',
+        icon: Icons.analytics_outlined,
+        children: [_EmptyStateMessage()],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _AgeSummaryCard(result: controller.result!),
+        const SizedBox(height: AppSpacing.md),
+        _TotalsCard(result: controller.result!),
+        if (controller.result!.showsBirthdaySection) ...[
+          const SizedBox(height: AppSpacing.md),
+          _NextBirthdayCard(result: controller.result!),
+        ],
+      ],
+    );
+  }
+}
+
+class _RemindersColumn extends StatelessWidget {
+  const _RemindersColumn({
+    required this.controller,
+    required this.onCreateReminder,
+    required this.onEnableNotifications,
+    required this.onEditReminder,
+    required this.onDeleteReminder,
+  });
+
+  final AgeCalculatorController controller;
+  final VoidCallback? onCreateReminder;
+  final VoidCallback onEnableNotifications;
+  final ValueChanged<Reminder> onEditReminder;
+  final ValueChanged<Reminder> onDeleteReminder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (controller.canSaveReminder &&
+            controller.suggestedReminderDate != null)
+          _ReminderSuggestionCard(
+            targetDate: controller.suggestedReminderDate!,
+            isBusy: controller.isSavingReminder,
+            onPressed: onCreateReminder,
+          ),
+        if (controller.canSaveReminder &&
+            controller.suggestedReminderDate != null)
+          const SizedBox(height: AppSpacing.md),
+        _UpcomingRemindersSection(
+          controller: controller,
+          onCreateReminder: onCreateReminder,
+          onEnableNotifications: onEnableNotifications,
+          onEditReminder: onEditReminder,
+          onDeleteReminder: onDeleteReminder,
+        ),
+      ],
+    );
   }
 }
 
@@ -402,13 +655,21 @@ class _ValidationMessage extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
-      child: Text(
-        message,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: colorScheme.onErrorContainer),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, color: colorScheme.onErrorContainer),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onErrorContainer,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -421,20 +682,30 @@ class _EmptyStateMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.hourglass_empty_rounded, color: colorScheme.primary),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.insights_outlined, size: 32, color: colorScheme.primary),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Nothing to show yet',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
             'Choose a start date and an end date, then tap Calculate to view the full age breakdown.',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -448,6 +719,7 @@ class _AgeSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ResultCard(
       title: 'Age Summary',
+      icon: Icons.cake_outlined,
       children: [
         _StatisticGrid(
           items: [
@@ -483,6 +755,7 @@ class _TotalsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ResultCard(
       title: 'Totals',
+      icon: Icons.calculate_outlined,
       children: [
         _StatisticGrid(
           items: [
@@ -518,6 +791,7 @@ class _NextBirthdayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ResultCard(
       title: 'Next Birthday',
+      icon: Icons.celebration_outlined,
       children: [
         _StatisticGrid(
           items: [
@@ -545,13 +819,14 @@ class _ReminderSuggestionCard extends StatelessWidget {
 
   final DateTime targetDate;
   final bool isBusy;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return ResultCard(
       title: 'Want to save this date?',
       subtitle: DateFormat('d MMMM y').format(targetDate),
+      icon: Icons.notifications_active_outlined,
       children: [
         PrimaryButton(
           label: isBusy ? 'Saving...' : 'Save Reminder',
@@ -566,12 +841,14 @@ class _UpcomingRemindersSection extends StatelessWidget {
   const _UpcomingRemindersSection({
     required this.controller,
     required this.onCreateReminder,
+    required this.onEnableNotifications,
     required this.onEditReminder,
     required this.onDeleteReminder,
   });
 
   final AgeCalculatorController controller;
   final VoidCallback? onCreateReminder;
+  final VoidCallback onEnableNotifications;
   final ValueChanged<Reminder> onEditReminder;
   final ValueChanged<Reminder> onDeleteReminder;
 
@@ -581,6 +858,7 @@ class _UpcomingRemindersSection extends StatelessWidget {
 
     return ResultCard(
       title: 'Upcoming Reminders',
+      icon: Icons.notifications_outlined,
       subtitle: controller.upcomingReminders.isEmpty
           ? 'Save an important date to see it here.'
           : null,
@@ -588,12 +866,48 @@ class _UpcomingRemindersSection extends StatelessWidget {
         if (controller.isLoadingReminders)
           const Center(child: CircularProgressIndicator())
         else ...[
-          if (controller.reminderErrorMessage != null) ...[
+          if (!controller.notificationsEnabled &&
+              controller.upcomingReminders.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.notifications_off_outlined,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Notifications are off for saved reminders.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onEnableNotifications,
+                    child: const Text('Enable'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (controller.reminderErrorMessage != null &&
+              controller.reminderErrorMessage !=
+                  AgeCalculatorController.notificationPermissionMessage) ...[
             _ValidationMessage(message: controller.reminderErrorMessage!),
             const SizedBox(height: AppSpacing.md),
           ],
           if (controller.upcomingReminders.isEmpty)
-            const Text('No reminders saved yet.')
+            const _ReminderEmptyState()
           else
             Column(
               children: [
@@ -630,6 +944,38 @@ class _UpcomingRemindersSection extends StatelessWidget {
           ],
         ],
       ],
+    );
+  }
+}
+
+class _ReminderEmptyState extends StatelessWidget {
+  const _ReminderEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.event_available_outlined, color: colorScheme.primary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'No reminders saved yet. After a calculation, you can save birthdays or comparison dates and get local notifications on this device.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

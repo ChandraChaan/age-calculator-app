@@ -1,4 +1,5 @@
 import 'package:agely/features/age_calculator/presentation/age_calculator_controller.dart';
+import 'package:agely/features/age_calculator/services/notification_service.dart';
 import 'package:agely/features/age_calculator/services/reminder.dart';
 import 'package:agely/features/age_calculator/services/reminder_storage_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ void main() {
       final storageService = _FakeReminderStorageService();
       final controller = AgeCalculatorController(
         reminderStorageService: storageService,
+        notificationService: _FakeNotificationService(),
         now: () => DateTime(2026, 7, 5),
       );
 
@@ -61,4 +63,12 @@ class _FakeReminderStorageService extends ReminderStorageService {
   Future<void> saveReminders(List<Reminder> reminders) async {
     savedReminders = List<Reminder>.from(reminders);
   }
+}
+
+class _FakeNotificationService extends NotificationService {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> syncReminders(List<Reminder> reminders) async {}
 }

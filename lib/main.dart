@@ -15,11 +15,17 @@ class AgelyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AgeCalculatorController()..initialize(),
-      child: MaterialApp(
-        title: 'Agely',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const HomePage(),
+      child: Consumer<AgeCalculatorController>(
+        builder: (context, controller, child) {
+          return MaterialApp(
+            title: 'Agely',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: controller.themeMode,
+            home: const HomePage(),
+          );
+        },
       ),
     );
   }
