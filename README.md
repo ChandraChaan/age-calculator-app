@@ -1,16 +1,51 @@
-# agely
+# Agely
 
-A modern Flutter Age Calculator application built with Material 3 and Clean Architecture.
+Agely is a lightweight Flutter app focused on one job: calculating age clearly and accurately.
 
-## Getting Started
+## Product direction
 
-This project is a starting point for a Flutter application.
+- Material 3
+- Minimal Google-utility style UI
+- Light theme first
+- No backend, auth, ads, or notifications
+- Small, maintainable codebase
 
-A few resources to get you started if this is your first Flutter project:
+## Planned v1 features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Date picker for date of birth
+- Age summary in years, months, and days
+- Total days, weeks, and months
+- Next birthday
+- Days until next birthday
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Project structure
+
+```text
+lib/
+  core/
+    constants/
+    theme/
+    utils/
+  features/
+    age_calculator/
+      presentation/
+        widgets/
+      services/
+  main.dart
+```
+
+## State management
+
+`provider` is used for simple app state.
+
+## Packages
+
+- `provider`
+- `intl`
+
+## Getting started
+
+1. Install the latest stable Flutter SDK.
+2. Run `flutter pub get`.
+3. Run `flutter analyze`.
+4. Run `flutter run`.
